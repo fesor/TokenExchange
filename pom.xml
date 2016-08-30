@@ -68,8 +68,8 @@
     </build>
     <dependencies>
         <dependency>
-            <groupId>org.ScripterRon</groupId>
-            <artifactId>NxtPeer</artifactId>
+            <groupId>org.itamarwe</groupId>
+            <artifactId>GECPeer</artifactId>
             <version>${nxtpeer.version}</version>
         </dependency>
     </dependencies>

@@ -13,3 +13,5 @@ package/
 # NetBeans IDE Files #
 nb*.xml
 
+.idea
+*.iml
