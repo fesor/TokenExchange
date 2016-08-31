@@ -15,12 +15,12 @@
  */
 package org.ScripterRon.TokenExchange;
 
+import nxt.Nxt;
 import nxt.http.APIServlet;
 import nxt.http.APITag;
 import nxt.http.ParameterException;
 import nxt.util.Convert;
 import nxt.util.JSON;
-import nxt.util.Logger;
 
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -39,49 +39,51 @@ import javax.servlet.http.HttpServletRequest;
  * <ul>
  * <li>blockReceived - Notification that a new Bitcoin block has been received.  The
  * 'id' parameter specifies the block identifier.
+ *
  * <li>deleteToken - Delete a token from the database.  The 'id' parameter specifies the
  * token to be deleted.
+ *
  * <li>getAccounts - Returns a list of Bitcoin addresses associated with Nxt accounts.
  * The 'account' parameter returns the address associated with that account.  The
  * 'address' parameter returns the accounts associated with that address.  All accounts
  * are returned if neither parameter is specified.
+ *
  * <li>getAddress - Get a new Bitcoin address and associate it with a Nxt account.
  * The 'account' parameter identifies the Nxt account.  The 'publicKey' parameter
  * can be specified to further identify the Nxt account and should be specified for
  * a new Nxt account.
+ *
  * <li>getStatus - Returns the current status of the TokenExchange add-on.
+ *
  * <li>getTokens - Returns a list of NXT currency transactions.  The 'height' parameter
  * can be used to specify the starting height, otherwise a height of 0 is used.
  * Transaction tokens at a height greater than the specified height
  * will be returned.  The 'includeExchanged' parameter can be used to return processed
  * tokens in addition to pending tokens.
+ *
  * <li>getTransactions - Return a list of transactions received by the Bitcoin wallet for
  * addresses associated with NXT accounts.  Specify the 'address' parameter to limit the
  * list to transactions for that address.  Otherwise, all transactions are returned.  Specify
  * the 'includeExchanged' parameter to return transactions that have been processed as well
  * as pending transactions.
+ *
  * <li>resume - Resume sending Bitcoins for redeemed tokens and issuing tokens for received
  * Bitcoins.
+ *
+ * <li>setExchangeRate - Set the token exchange rate.
+ *
  * <li>suspend - Stop sending Bitcoins for redeemed tokens and issuing tokens for received
  * Bitcoins.
- * <li>transactionReceived -Notification that a new bitcoin transaction has been received.  The
- * 'id' parameter specifies the transaction identifier.
  * </ul>
  */
 public class TokenAPI extends APIServlet.APIRequestHandler {
-
-    /** Bitcoin processing lock */
-    private static final Object bitcoinLock = new Object();
-
-    /** Processing Bitcoin transactions */
-    private static volatile boolean processingTransactions = false;
 
     /**
      * Create the API request handler
      */
     public TokenAPI() {
         super(new APITag[] {APITag.ADDONS},
-                "function", "id", "includeExchanged", "height", "account", "publicKey", "address");
+                "function", "id", "includeExchanged", "height", "account", "publicKey", "address", "rate");
     }
 
     /**
@@ -105,6 +107,7 @@ public class TokenAPI extends APIServlet.APIRequestHandler {
         String accountString;
         String publicKeyString;
         String addressString;
+        String rateString;
         boolean includeExchanged;
         BitcoinAccount account;
         long accountId;
@@ -118,7 +121,21 @@ public class TokenAPI extends APIServlet.APIRequestHandler {
                 response.put("confirmations", TokenAddon.confirmations);
                 response.put("bitcoindAddress", TokenAddon.bitcoindAddress);
                 response.put("bitcoindTxFee", TokenAddon.bitcoindTxFee.toPlainString());
+                response.put("bitcoinChainHeight", BitcoinProcessor.getChainHeight());
+                response.put("nxtChainHeight", Nxt.getBlockchain().getHeight());
                 response.put("suspended", TokenAddon.isSuspended());
+                break;
+            case "setExchangeRate":
+                rateString = Convert.emptyToNull(req.getParameter("rate"));
+                if (rateString == null) {
+                    return missing("rate");
+                }
+                BigDecimal rate = new BigDecimal(rateString)
+                    .movePointRight(8)
+                    .divideToIntegralValue(BigDecimal.ONE)
+                    .movePointLeft(8)
+                    .stripTrailingZeros();
+                response.put("processed", TokenDb.setExchangeRate(rate));
                 break;
             case "getTokens":
                 int height;
@@ -145,7 +162,7 @@ public class TokenAPI extends APIServlet.APIRequestHandler {
                     tokenObject.put("id", Long.toUnsignedString(token.getNxtTxId()));
                     tokenObject.put("sender", Long.toUnsignedString(token.getSenderId()));
                     tokenObject.put("senderRS", Convert.rsAccount(token.getSenderId()));
-                    tokenObject.put("height", token.getHeight());
+                    tokenObject.put("nxtChainHeight", token.getHeight());
                     tokenObject.put("exchanged", token.isExchanged());
                     tokenObject.put("tokenAmount",
                             BigDecimal.valueOf(token.getTokenAmount(), TokenAddon.currencyDecimals).toPlainString());
@@ -241,6 +258,7 @@ public class TokenAPI extends APIServlet.APIRequestHandler {
                 txList.forEach((tx) -> {
                     JSONObject txJSON = new JSONObject();
                     txJSON.put("bitcoinTxId", Convert.toHexString(tx.getBitcoinTxId()));
+                    txJSON.put("bitcoinChainHeight", tx.getHeight());
                     txJSON.put("address", tx.getBitcoinAddress());
                     txJSON.put("bitcoinAmount", BigDecimal.valueOf(tx.getBitcoinAmount(), 8).toPlainString());
                     txJSON.put("tokenAmount", BigDecimal.valueOf(tx.getTokenAmount(), TokenAddon.currencyDecimals).toPlainString());
@@ -255,33 +273,7 @@ public class TokenAPI extends APIServlet.APIRequestHandler {
                 response.put("transactions", txArray);
                 break;
             case "blockReceived":
-                idString = Convert.emptyToNull(req.getParameter("id"));
-                synchronized(bitcoinLock) {
-                    if (!processingTransactions) {
-                        processingTransactions = true;
-                        TokenCurrency.processTransactions();
-                        processingTransactions = false;
-                    }
-                }
-                response.put("processed", true);
-                break;
-            case "transactionReceived":
-                idString = Convert.emptyToNull(req.getParameter("id"));
-                byte[] txid = Convert.parseHexString(idString);
-                synchronized(bitcoinLock) {
-                    if (TokenDb.getTransaction(txid) == null) {
-                        BitcoinTransaction tx = BitcoinProcessor.getTransaction(txid);
-                        if (tx != null) {
-                            if (TokenDb.storeTransaction(tx)) {
-                                Logger.logInfoMessage("Bitcoin transaction " + idString + " added to database");
-                            } else {
-                                Logger.logErrorMessage("Bitcoin transaction " + idString + " was not processed");
-                            }
-                        } else {
-                            Logger.logWarningMessage("Bitcoin transaction " + idString + " does have a Nxt account");
-                        }
-                    }
-                }
+                BitcoinProcessor.blockReceived();
                 response.put("processed", true);
                 break;
             default:
