@@ -48,10 +48,10 @@ public class BitcoinProcessor implements Runnable {
     private static final long MIN_VERSION = 130000L;
 
     /** Connect timeout (milliseconds) */
-    private static final int nodeConnectTimeout = 2000;
+    private static final int nodeConnectTimeout = 15000;
 
     /** Read timeout (milliseconds) */
-    private static final int nodeReadTimeout = 5000;
+    private static final int nodeReadTimeout = 15000;
 
     /** Request identifier */
     private static final AtomicLong requestId = new AtomicLong(0);
