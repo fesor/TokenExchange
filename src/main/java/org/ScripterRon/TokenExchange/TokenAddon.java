@@ -68,8 +68,11 @@ public class TokenAddon implements AddOn {
     /** Token account identifier */
     static long accountId;
 
-    /** Number of confirmations */
-    static int confirmations;
+    /** Number of Nxt confirmations */
+    static int nxtConfirmations;
+
+    /** Number of Bitcoin confirmations */
+    static int bitcoinConfirmations;
 
     /** Bitcoind address */
     static String bitcoindAddress;
@@ -116,7 +119,8 @@ public class TokenAddon implements AddOn {
             //
             Properties properties = new Properties();
             Nxt.loadProperties(properties, "token-exchange.properties", false);
-            confirmations = getIntegerProperty(properties, "confirmations", true);
+            nxtConfirmations = getIntegerProperty(properties, "nxtConfirmations", true);
+            bitcoinConfirmations = getIntegerProperty(properties, "bitcoinConfirmations", true);
             exchangeRate = getDecimalProperty(properties, "exchangeRate", true)
                     .movePointRight(8)
                     .divideToIntegralValue(BigDecimal.ONE)
@@ -139,6 +143,9 @@ public class TokenAddon implements AddOn {
             currencyId = currency.getId();
             currencyDecimals = currency.getDecimals();
             Account account = Account.getAccount(accountId);
+            if (account == null) {
+                throw new IllegalArgumentException("TokenExchange account " + Convert.rsAccount(accountId) + " does not exist");
+            }
             Logger.logInfoMessage("TokenExchange account " + Convert.rsAccount(accountId) + " has "
                     + BigDecimal.valueOf(account.getUnconfirmedBalanceNQT(), 8).toPlainString()
                     + " NXT");

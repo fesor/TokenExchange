@@ -3,7 +3,7 @@ TokenExchange
 
 TokenExchange is a NRS add-on that automates the process of exchanging Nxt currency for bitcoins and issuing Nxt currency when receiving bitcoins.  
 
-The add-on watches for transfer transactions of the specified currency.  If the transfer is to the redemption Nxt account, a bitcoin transaction will be initiated to send the equivalent amount of bitcoins to the bitcoin address that was specified as a message attached to the transfer transaction.  The attached message must be a prunable plain message.
+The add-on watches for transfer transactions of the specified currency.  If the transfer is to the redemption Nxt account, a bitcoin transaction will be initiated to send the equivalent amount of bitcoins to the bitcoin address that was specified as a message attached to the transfer transaction.  The attached message must be a plain or encrypted prunable text message.
 
 The bitcoind 'blocknotify' routine must be defined in bitcoin.conf.  The 'blocknotify' routine must issue a TokenExchange 'blockReceived' API request.  The bitcoin address must have been associated with a Nxt account using a TokenExchange 'getAddress' request.  These addresses are defined in the bitcoind wallet as well as in the TokenExchange database, so changing either the bitcoind wallet or the NRS server will invalidate the association.  The bitcoin transactions must be P2PKH (pay to public key hash).
 
@@ -18,8 +18,11 @@ The token-exchange.properties configuration file controls the operation of the T
 - secretPhrase=secret-phrase
     This specifies the NXT account used to issue token currency and process redemption requests.
     
-- confirmations=n    
-    This specifies the number of blocks following the block containing a transaction before the transaction will be processed.  This applies to both Bitcoin transactions and Nxt transactions.
+- nxtConfirmations=n    
+    This specifies the number of blocks following the block containing a Nxt transaction before the transaction will be processed.
+    
+- bitcoinConfirmations=n    
+    This specifies the number of blocks following the block containing a Bitcoin transaction before the transaction will be processed.
     
 - bitcoindAddress=host-name:port    
     This specifies the host name and port of the bitcoind server that will be used to send bitcoins to the user.  Since bitcoind no longer supports SSL connections, the bitcoind server should be running on the same system as the NRS server to avoid security leaks.
@@ -78,7 +81,6 @@ The following functions are available:
     Stop sending bitcoins for redeemed tokens and issuing tokens for received bitcoins.  Specify 'function=suspend' in the HTTP request.  Token redemption requests and bitcoin deposits will still be added to the database but the requests will not be processed until sending is resumed or the NRS server is restarted.
 
 
-    
 Installation
 ============
 
@@ -97,6 +99,8 @@ Installation
 - Add 'blocknotify' to bitcoin.conf.  A sample shell script is included in the TokenExchange directory.  Copy it to a directory of your choice and set the administrator password for your NRS server.  Read access should be restricted to the bitcoind application.  For example:    
     - blocknotify=/path-to-script/blocknotify.sh %s    
 
+- Start the Bitcoin-Core server before starting the NRS server.    
+    
     
 Build
 =====
