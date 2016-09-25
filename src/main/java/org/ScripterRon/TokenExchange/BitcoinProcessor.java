@@ -273,7 +273,7 @@ public class BitcoinProcessor implements Runnable {
 
                         Attachment attachment2 = nxt.Attachment.ORDINARY_PAYMENT;
                         nxt.Transaction.Builder builder2 = Nxt.newTransactionBuilder(TokenAddon.publicKey,
-                                nxt.Constants.ONE_NXT, 0, (short)1440, attachment2);
+                                nxt.Constants.ONE_NXT/100, 0, (short)1440, attachment2);
                         builder2.recipientId(tx.getAccountId()).timestamp(Nxt.getEpochTime());
                         builder2.referencedTransactionFullHash(transaction.getFullHash());
                         nxt.Transaction transaction2 = builder2.build(TokenAddon.secretPhrase);
@@ -288,7 +288,7 @@ public class BitcoinProcessor implements Runnable {
                         }
                         nxtBalance -= (transaction2.getFeeNQT()+transaction2.getAmountNQT());
 
-                        Logger.logInfoMessage("Sent 1 GEC to " + Convert.rsAccount(tx.getAccountId())
+                        Logger.logInfoMessage("Sent 0.01 GEC to " + Convert.rsAccount(tx.getAccountId())
                                 + ", Transaction " + Long.toUnsignedString(transaction2.getId()));
                     }
                 } catch (Exception exc) {
