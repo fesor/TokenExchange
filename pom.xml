@@ -92,7 +92,7 @@
     <dependencies>
         <dependency>
             <groupId>org.itamarwe</groupId>
-            <artifactId>GECPeer</artifactId>
+            <artifactId>IFVPeer</artifactId>
             <version>${nxtpeer.version}</version>
         </dependency>
         <dependency>

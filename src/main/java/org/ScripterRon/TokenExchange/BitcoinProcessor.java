@@ -288,7 +288,7 @@ public class BitcoinProcessor implements Runnable {
                         }
                         nxtBalance -= (transaction2.getFeeNQT()+transaction2.getAmountNQT());
 
-                        Logger.logInfoMessage("Sent 0.01 GEC to " + Convert.rsAccount(tx.getAccountId())
+                        Logger.logInfoMessage("Sent 0.01 IFV to " + Convert.rsAccount(tx.getAccountId())
                                 + ", Transaction " + Long.toUnsignedString(transaction2.getId()));
                     }
                 } catch (Exception exc) {
